@@ -183,10 +183,13 @@ class UHomeCPClient:
         Returns:
             (img_code_base64, random_token)
         """
+        self._warmup()
         resp = self.session.get(f"{BASE_URL}{CAPTCHA_URL}")
         result = resp.json()
-        img_code = result.get("imgCode", "")
-        random_token = result.get("randomToken", "")
+        data = result.get("data", {})
+        img_code = data.get("imgCode", "")
+        random_token = data.get("randomToken", "")
+        _LOGGER.debug("Got captcha: imgCode=%d bytes, randomToken=%s", len(img_code), random_token[:20] if random_token else "empty")
         return img_code, random_token
 
     def get_communities(self) -> list[dict[str, Any]]:

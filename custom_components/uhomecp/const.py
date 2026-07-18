@@ -41,7 +41,7 @@ CONF_COMMUNITY_ID = "community_id"
 CONF_COMMUNITY_NAME = "community_name"
 
 # Version
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 
 # Update interval (seconds)
 UPDATE_INTERVAL = 300  # 5 minutes

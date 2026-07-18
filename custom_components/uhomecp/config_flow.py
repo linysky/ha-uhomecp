@@ -1,13 +1,10 @@
 """Config flow for U管家门禁 integration."""
 
 import logging
-import os
-import base64
 from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.components import persistent_notification
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
@@ -46,6 +43,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._random_token: str = ""
         self._img_code: str = ""
         self._communities: list[dict[str, Any]] = []
+        self._errors: dict[str, str] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -59,7 +57,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._client = UHomeCPClient(self._phone, self._password)
 
             try:
-                result = await self._client.async_login()
+                await self._client.async_login()
             except CaptchaRequired as err:
                 self._img_code = err.img_code
                 self._random_token = err.random_token
@@ -70,8 +68,8 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except LoginError as err:
                 _LOGGER.error("Login failed: %s", err)
                 errors["base"] = "invalid_auth"
-            except Exception:
-                _LOGGER.exception("Unexpected exception during login")
+            except Exception as err:
+                _LOGGER.exception("Unexpected error during login: %s", err)
                 errors["base"] = "unknown"
             else:
                 return await self._after_login()
@@ -85,55 +83,39 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_captcha(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the captcha step - user inputs the captcha text."""
+        """Handle the captcha step."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
             captcha = user_input["captcha"]
             try:
-                result = await self._client.async_login_with_captcha(
+                await self._client.async_login_with_captcha(
                     captcha, self._random_token
                 )
             except LoginError as err:
                 _LOGGER.error("Login with captcha failed: %s", err)
                 errors["base"] = "invalid_captcha"
+                # Get a fresh captcha
                 try:
                     self._img_code, self._random_token = (
                         await self._client.async_get_captcha()
                     )
                 except Exception:
                     errors["base"] = "unknown"
-            except Exception:
-                _LOGGER.exception("Unexpected exception during captcha login")
+            except Exception as err:
+                _LOGGER.exception("Unexpected error during captcha login: %s", err)
                 errors["base"] = "unknown"
             else:
-                # Dismiss the notification
-                persistent_notification.dismiss(self.hass, f"{DOMAIN}_captcha")
                 return await self._after_login()
 
-        # Save captcha image to www folder and show notification
-        www_dir = self.hass.config.path("www")
-        await self.hass.async_add_executor_job(os.makedirs, www_dir, True)
-
-        img_data = base64.b64decode(self._img_code)
-        filepath = os.path.join(www_dir, "uhomecp_captcha.jpg")
-        await self.hass.async_add_executor_job(
-            lambda: open(filepath, "wb").write(img_data)
-        )
-
-        # Show persistent notification with the image
-        persistent_notification.create(
-            self.hass,
-            f'<img src="/local/uhomecp_captcha.jpg" alt="验证码" style="max-width:200px;">'
-            f"\n\n请在下方输入验证码：",
-            title="U管家验证码",
-            notification_id=f"{DOMAIN}_captcha",
-        )
+        # Build captcha image as markdown (same pattern as xiaomi_miot)
+        captcha_md = f"![captcha](data:image/jpeg;base64,{self._img_code})"
 
         return self.async_show_form(
             step_id="captcha",
             data_schema=STEP_CAPTCHA_DATA_SCHEMA,
             errors=errors,
+            description_placeholders={"tip": captcha_md},
         )
 
     async def _after_login(self) -> FlowResult:
