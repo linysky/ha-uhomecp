@@ -8,7 +8,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import UHomeCPApiError, UHomeCPClient
+from .api import CaptchaRequired, UHomeCPApiError, UHomeCPClient
 from .const import CONF_PASSWORD, CONF_PHONE, DOMAIN, UPDATE_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,18 +23,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     client = UHomeCPClient(phone, password)
 
-    # Login
+    # Login (should succeed without captcha since it was solved during config)
     try:
-        await hass.async_add_executor_job(client.login)
+        await client.async_login()
+    except CaptchaRequired:
+        _LOGGER.error("Captcha required during setup - this should not happen")
+        return False
     except UHomeCPApiError as err:
         _LOGGER.error("Failed to login: %s", err)
+        return False
+
+    # Get initial door list
+    try:
+        await client.async_get_doors()
+    except UHomeCPApiError as err:
+        _LOGGER.error("Failed to get doors: %s", err)
         return False
 
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name=DOMAIN,
-        update_method=lambda: hass.async_add_executor_job(client.get_doors),
+        update_method=client.async_get_doors,
         update_interval=timedelta(seconds=UPDATE_INTERVAL),
     )
 

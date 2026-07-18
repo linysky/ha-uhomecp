@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives import serialization
 
 from .const import (
     BASE_URL,
+    CAPTCHA_URL,
     DEFAULT_HEADERS,
     DOOR_LIST_URL,
     LOGIN_URL,
@@ -20,22 +21,20 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Code indicating captcha is required
+CODE_NEED_CAPTCHA = "20010"
+CODE_SUCCESS = "0"
+CODE_SESSION_EXPIRED = "0000002"
+
 
 def encrypt_password(password: str) -> str:
     """Encrypt password: Base64 encode -> RSA encrypt -> base64 output.
 
     Replicates the sg-rsa.js encryptLong flow from the H5 frontend.
     """
-    # 1. Base64 encode the password
     pwd_b64 = base64.b64encode(password.encode()).decode()
-
-    # 2. Load RSA public key
     public_key = serialization.load_pem_public_key(RSA_PUBLIC_KEY.encode())
-
-    # 3. RSA encrypt with PKCS1v15
     encrypted = public_key.encrypt(pwd_b64.encode(), asym_padding.PKCS1v15())
-
-    # 4. Return base64 encoded ciphertext
     return base64.b64encode(encrypted).decode()
 
 
@@ -47,8 +46,12 @@ class LoginError(UHomeCPApiError):
     """Login failed."""
 
 
-class DoorNotFoundError(UHomeCPApiError):
-    """Door not found."""
+class CaptchaRequired(UHomeCPApiError):
+    """Captcha is required to complete login."""
+
+    def __init__(self, img_code: str, random_token: str) -> None:
+        self.img_code = img_code
+        self.random_token = random_token
 
 
 class UHomeCPClient:
@@ -61,12 +64,18 @@ class UHomeCPClient:
         self.session.headers.update(DEFAULT_HEADERS)
         self.logged_in = False
         self.user_info: dict[str, Any] = {}
+        self.community_id: str = ""
         self.doors: list[dict[str, Any]] = []
 
-    def login(self) -> bool:
+    def login(self) -> dict[str, Any]:
         """Login with phone + password (RSA encrypted).
 
-        Returns True on success, raises LoginError on failure.
+        Returns:
+            {"success": True, "userId": "..."} on success
+
+        Raises:
+            CaptchaRequired: if captcha is needed (contains img_code + random_token)
+            LoginError: on other failures
         """
         encrypted_pwd = encrypt_password(self.password)
 
@@ -84,16 +93,73 @@ class UHomeCPClient:
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         result = resp.json()
+        code = result.get("code", "")
 
-        if result.get("code") == "0":
+        if code == CODE_SUCCESS:
             self.logged_in = True
             self.user_info = result.get("data", {})
             _LOGGER.info("Login successful for %s", self.phone)
-            return True
+            return {"success": True, "data": self.user_info}
+
+        if code == CODE_NEED_CAPTCHA:
+            _LOGGER.info("Captcha required for %s", self.phone)
+            img_code, random_token = self.get_captcha()
+            raise CaptchaRequired(img_code, random_token)
 
         msg = result.get("msg") or result.get("message", "Unknown error")
         _LOGGER.error("Login failed: %s", msg)
         raise LoginError(msg)
+
+    def login_with_captcha(self, captcha: str, random_token: str) -> dict[str, Any]:
+        """Login with captcha.
+
+        Args:
+            captcha: The captcha text entered by the user.
+            random_token: The random token from get_captcha().
+
+        Returns:
+            {"success": True, "userId": "..."} on success
+        """
+        encrypted_pwd = encrypt_password(self.password)
+
+        data = {
+            "loginType": "1",
+            "password": encrypted_pwd,
+            "tel": self.phone,
+            "clientId": "wx",
+            "md5Flag": "true",
+            "imgCode": captcha,
+            "randomToken": random_token,
+        }
+
+        resp = self.session.post(
+            f"{BASE_URL}{LOGIN_URL}",
+            data=data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        result = resp.json()
+
+        if result.get("code") == CODE_SUCCESS:
+            self.logged_in = True
+            self.user_info = result.get("data", {})
+            _LOGGER.info("Login with captcha successful for %s", self.phone)
+            return {"success": True, "data": self.user_info}
+
+        msg = result.get("msg") or result.get("message", "Unknown error")
+        _LOGGER.error("Login with captcha failed: %s", msg)
+        raise LoginError(msg)
+
+    def get_captcha(self) -> tuple[str, str]:
+        """Get captcha image from server.
+
+        Returns:
+            (img_code_base64, random_token)
+        """
+        resp = self.session.get(f"{BASE_URL}{CAPTCHA_URL}")
+        result = resp.json()
+        img_code = result.get("imgCode", "")
+        random_token = result.get("randomToken", "")
+        return img_code, random_token
 
     def get_doors(self) -> list[dict[str, Any]]:
         """Get list of doors for the user's community.
@@ -101,33 +167,35 @@ class UHomeCPClient:
         Returns list of door dicts with keys: doorId, doorIdStr, name, doorType.
         """
         if not self.logged_in:
-            self.login()
-
-        community_id = self.user_info.get("communityId", "")
-        cust_id = self.user_info.get("custId", "")
+            raise UHomeCPApiError("Not logged in")
 
         resp = self.session.get(
             f"{BASE_URL}{DOOR_LIST_URL}",
-            params={"communityId": community_id, "custId": cust_id},
+            params={
+                "communityId": self.community_id,
+                "custId": str(self.user_info.get("userId", "")),
+            },
         )
         result = resp.json()
 
-        if result.get("code") == "0":
+        if result.get("code") == CODE_SUCCESS:
             self.doors = result.get("data", [])
+            # Extract communityId from first door if not set
+            if self.doors and not self.community_id:
+                self.community_id = str(self.doors[0].get("communityId", ""))
             _LOGGER.info("Found %d doors", len(self.doors))
             return self.doors
 
-        # Session might have expired, try re-login
-        if result.get("code") in ("0000002", "-1"):
-            _LOGGER.warning("Session expired, re-logging in")
-            self.login()
-            return self.get_doors()
+        if result.get("code") == CODE_SESSION_EXPIRED:
+            raise UHomeCPApiError("Session expired, please re-login")
 
         msg = result.get("msg") or result.get("message", "Unknown error")
         raise UHomeCPApiError(f"Failed to get doors: {msg}")
 
     def open_door(self, door_id: str, door_id_str: str) -> bool:
         """Open a specific door.
+
+        Uses application/json content type (not form-urlencoded).
 
         Args:
             door_id: The door ID (numeric).
@@ -136,13 +204,13 @@ class UHomeCPClient:
         Returns True on success.
         """
         if not self.logged_in:
-            self.login()
+            raise UHomeCPApiError("Not logged in")
 
         data = {
-            "custId": str(self.user_info.get("custId", "")),
+            "custId": str(self.user_info.get("userId", "")),
             "userId": str(self.user_info.get("userId", "")),
             "doorId": str(door_id),
-            "communityId": str(self.user_info.get("communityId", "")),
+            "communityId": self.community_id,
             "doorIdStr": str(door_id_str),
             "appVersion": "2.3",
             "appType": "2",
@@ -150,28 +218,36 @@ class UHomeCPClient:
 
         resp = self.session.post(
             f"{BASE_URL}{OPEN_DOOR_URL}",
-            data=data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            json=data,  # application/json, not form-urlencoded
         )
         result = resp.json()
 
-        if result.get("code") == "0":
+        if result.get("code") == CODE_SUCCESS:
             _LOGGER.info("Door %s opened successfully", door_id)
             return True
 
-        # Session might have expired, try re-login
-        if result.get("code") in ("0000002",):
-            _LOGGER.warning("Session expired during open_door, re-logging in")
-            self.login()
-            return self.open_door(door_id, door_id_str)
+        if result.get("code") == CODE_SESSION_EXPIRED:
+            raise UHomeCPApiError("Session expired, please re-login")
 
         msg = result.get("msg") or result.get("message", "Unknown error")
         _LOGGER.error("Failed to open door %s: %s", door_id, msg)
         raise UHomeCPApiError(f"Failed to open door: {msg}")
 
-    async def async_login(self) -> bool:
+    async def async_login(self) -> dict[str, Any]:
         """Async wrapper for login."""
         return await asyncio.to_thread(self.login)
+
+    async def async_login_with_captcha(
+        self, captcha: str, random_token: str
+    ) -> dict[str, Any]:
+        """Async wrapper for login_with_captcha."""
+        return await asyncio.to_thread(
+            self.login_with_captcha, captcha, random_token
+        )
+
+    async def async_get_captcha(self) -> tuple[str, str]:
+        """Async wrapper for get_captcha."""
+        return await asyncio.to_thread(self.get_captcha)
 
     async def async_get_doors(self) -> list[dict[str, Any]]:
         """Async wrapper for get_doors."""

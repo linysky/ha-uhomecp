@@ -8,10 +8,18 @@
           "phone": "手机号",
           "password": "密码"
         }
+      },
+      "captcha": {
+        "title": "输入验证码",
+        "description": "请输入图片中的验证码\n\n{captcha_image}",
+        "data": {
+          "captcha": "验证码"
+        }
       }
     },
     "error": {
       "invalid_auth": "手机号或密码错误",
+      "invalid_captcha": "验证码错误，请重试",
       "unknown": "未知错误，请稍后重试"
     },
     "abort": {

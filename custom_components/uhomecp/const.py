@@ -5,6 +5,7 @@ DOMAIN = "uhomecp"
 # API endpoints
 BASE_URL = "https://www.uhomecp.com"
 LOGIN_URL = "/authc-restapi/v1/user/auth/login"
+CAPTCHA_URL = "/authc-restapi/v1/auth/code/getImgCode"
 DOOR_LIST_URL = "/door-restapi/v1/userapp/doorList"
 OPEN_DOOR_URL = "/uhomecp-app/v1/userapp/opendoor/submit.json"
 

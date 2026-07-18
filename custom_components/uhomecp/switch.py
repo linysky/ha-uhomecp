@@ -12,7 +12,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import UHomeCPClient
 from .const import DOMAIN
-from . import DataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ async def async_setup_entry(
     """Set up U管家门禁 switch entities from a config entry."""
     data = hass.data[DOMAIN][entry.entry_id]
     client: UHomeCPClient = data["client"]
-    coordinator: DataUpdateCoordinator = data["coordinator"]
+    coordinator = data["coordinator"]
 
     entities = []
     for door in coordinator.data:
@@ -51,7 +50,7 @@ class UHomeCPDoorSwitch(CoordinatorEntity, SwitchEntity):
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator,
+        coordinator,
         client: UHomeCPClient,
         door: dict[str, Any],
         entry_id: str,
@@ -60,7 +59,7 @@ class UHomeCPDoorSwitch(CoordinatorEntity, SwitchEntity):
         super().__init__(coordinator)
         self._client = client
         self._door = door
-        self._door_id = door.get("doorId", "")
+        self._door_id = str(door.get("doorId", ""))
         self._door_id_str = door.get("doorIdStr", "")
         self._door_name = door.get("name", "Unknown Door")
         self._is_on = False
@@ -101,10 +100,9 @@ class UHomeCPDoorSwitch(CoordinatorEntity, SwitchEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        # Update door info from coordinator data if available
         if self.coordinator.data:
             for door in self.coordinator.data:
-                if str(door.get("doorId")) == str(self._door_id):
+                if str(door.get("doorId")) == self._door_id:
                     self._door = door
                     self._door_name = door.get("name", self._door_name)
                     self._attr_name = self._door_name
