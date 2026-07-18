@@ -12,6 +12,7 @@ from cryptography.hazmat.primitives import serialization
 from .const import (
     BASE_URL,
     CAPTCHA_URL,
+    COMMUNITY_LIST_URL,
     DEFAULT_HEADERS,
     DOOR_LIST_URL,
     LOGIN_URL,
@@ -65,6 +66,7 @@ class UHomeCPClient:
         self.logged_in = False
         self.user_info: dict[str, Any] = {}
         self.community_id: str = ""
+        self.community_name: str = ""
         self.doors: list[dict[str, Any]] = []
 
     def login(self) -> dict[str, Any]:
@@ -161,6 +163,32 @@ class UHomeCPClient:
         random_token = result.get("randomToken", "")
         return img_code, random_token
 
+    def get_communities(self) -> list[dict[str, Any]]:
+        """Get list of communities for the logged-in user.
+
+        Returns list of community dicts with keys:
+            communityId, communityName, cityName, provinceName, status
+        """
+        if not self.logged_in:
+            raise UHomeCPApiError("Not logged in")
+
+        resp = self.session.get(f"{BASE_URL}{COMMUNITY_LIST_URL}")
+        result = resp.json()
+
+        if result.get("code") == CODE_SUCCESS:
+            communities = result.get("data", [])
+            _LOGGER.info("Found %d communities", len(communities))
+            return communities
+
+        msg = result.get("msg") or result.get("message", "Unknown error")
+        raise UHomeCPApiError(f"Failed to get communities: {msg}")
+
+    def set_community(self, community_id: str, community_name: str) -> None:
+        """Set the active community for subsequent API calls."""
+        self.community_id = community_id
+        self.community_name = community_name
+        _LOGGER.info("Community set to %s (%s)", community_name, community_id)
+
     def get_doors(self) -> list[dict[str, Any]]:
         """Get list of doors for the user's community.
 
@@ -248,6 +276,16 @@ class UHomeCPClient:
     async def async_get_captcha(self) -> tuple[str, str]:
         """Async wrapper for get_captcha."""
         return await asyncio.to_thread(self.get_captcha)
+
+    async def async_get_communities(self) -> list[dict[str, Any]]:
+        """Async wrapper for get_communities."""
+        return await asyncio.to_thread(self.get_communities)
+
+    async def async_set_community(
+        self, community_id: str, community_name: str
+    ) -> None:
+        """Async wrapper for set_community."""
+        await asyncio.to_thread(self.set_community, community_id, community_name)
 
     async def async_get_doors(self) -> list[dict[str, Any]]:
         """Async wrapper for get_doors."""

@@ -8,14 +8,30 @@
           "phone": "Phone Number",
           "password": "Password"
         }
+      },
+      "captcha": {
+        "title": "Enter Captcha",
+        "description": "Please enter the captcha shown in the image\n\n{captcha_image}",
+        "data": {
+          "captcha": "Captcha"
+        }
+      },
+      "community": {
+        "title": "Select Community",
+        "description": "Select the community you want to manage",
+        "data": {
+          "community_id": "Community"
+        }
       }
     },
     "error": {
       "invalid_auth": "Invalid phone number or password",
+      "invalid_captcha": "Invalid captcha, please try again",
       "unknown": "Unknown error, please try again later"
     },
     "abort": {
-      "already_configured": "This account is already configured"
+      "already_configured": "This account is already configured",
+      "no_communities": "No communities found"
     }
   }
 }

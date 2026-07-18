@@ -9,21 +9,30 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import CaptchaRequired, UHomeCPApiError, UHomeCPClient
-from .const import CONF_PASSWORD, CONF_PHONE, DOMAIN, UPDATE_INTERVAL
+from .const import (
+    CONF_COMMUNITY_ID,
+    CONF_COMMUNITY_NAME,
+    CONF_PASSWORD,
+    CONF_PHONE,
+    DOMAIN,
+    UPDATE_INTERVAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SWITCH]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up U管家门禁 from a config entry."""
     phone = entry.data[CONF_PHONE]
     password = entry.data[CONF_PASSWORD]
+    community_id = entry.data.get(CONF_COMMUNITY_ID, "")
+    community_name = entry.data.get(CONF_COMMUNITY_NAME, "")
 
     client = UHomeCPClient(phone, password)
 
-    # Login (should succeed without captcha since it was solved during config)
+    # Login
     try:
         await client.async_login()
     except CaptchaRequired:
@@ -32,6 +41,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except UHomeCPApiError as err:
         _LOGGER.error("Failed to login: %s", err)
         return False
+
+    # Set community
+    if community_id:
+        await client.async_set_community(community_id, community_name)
 
     # Get initial door list
     try:

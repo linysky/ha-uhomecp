@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 
 from .api import CaptchaRequired, LoginError, UHomeCPClient
-from .const import CONF_PASSWORD, CONF_PHONE, DOMAIN
+from .const import CONF_COMMUNITY_ID, CONF_COMMUNITY_NAME, CONF_PASSWORD, CONF_PHONE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._password: str = ""
         self._random_token: str = ""
         self._img_code: str = ""
+        self._communities: list[dict[str, Any]] = []
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -54,7 +55,6 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 result = await self._client.async_login()
             except CaptchaRequired as err:
-                # Need captcha, save the captcha info and show captcha step
                 self._img_code = err.img_code
                 self._random_token = err.random_token
                 return await self.async_step_captcha()
@@ -65,14 +65,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception during login")
                 errors["base"] = "unknown"
             else:
-                # Login successful without captcha
-                await self.async_set_unique_id(self._phone)
-                self._abort_if_unique_id_configured()
-
-                return self.async_create_entry(
-                    title=f"U管家 ({self._phone})",
-                    data=user_input,
-                )
+                return await self._after_login()
 
         return self.async_show_form(
             step_id="user",
@@ -95,7 +88,6 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except LoginError as err:
                 _LOGGER.error("Login with captcha failed: %s", err)
                 errors["base"] = "invalid_captcha"
-                # Get a new captcha for retry
                 try:
                     self._img_code, self._random_token = (
                         await self._client.async_get_captcha()
@@ -106,17 +98,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception during captcha login")
                 errors["base"] = "unknown"
             else:
-                # Login successful
-                await self.async_set_unique_id(self._phone)
-                self._abort_if_unique_id_configured()
-
-                return self.async_create_entry(
-                    title=f"U管家 ({self._phone})",
-                    data={
-                        CONF_PHONE: self._phone,
-                        CONF_PASSWORD: self._password,
-                    },
-                )
+                return await self._after_login()
 
         return self.async_show_form(
             step_id="captcha",
@@ -125,4 +107,88 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={
                 "captcha_image": f"![captcha](data:image/jpeg;base64,{self._img_code})",
             },
+        )
+
+    async def _after_login(self) -> FlowResult:
+        """After successful login, get communities and show selection."""
+        try:
+            self._communities = await self._client.async_get_communities()
+        except Exception:
+            _LOGGER.exception("Failed to get communities")
+            # If we can't get communities, just create entry without community
+            await self.async_set_unique_id(self._phone)
+            self._abort_if_unique_id_configured()
+            return self.async_create_entry(
+                title=f"U管家 ({self._phone})",
+                data={
+                    CONF_PHONE: self._phone,
+                    CONF_PASSWORD: self._password,
+                },
+            )
+
+        # Filter active communities only
+        active = [c for c in self._communities if c.get("status") == 1]
+
+        if len(active) == 0:
+            return self.async_abort(reason="no_communities")
+
+        if len(active) == 1:
+            # Only one community, auto-select
+            community = active[0]
+            await self._client.async_set_community(
+                str(community["communityId"]), community["communityName"]
+            )
+            await self.async_set_unique_id(self._phone)
+            self._abort_if_unique_id_configured()
+            return self.async_create_entry(
+                title=f"{community['communityName']} ({self._phone})",
+                data={
+                    CONF_PHONE: self._phone,
+                    CONF_PASSWORD: self._password,
+                    CONF_COMMUNITY_ID: str(community["communityId"]),
+                    CONF_COMMUNITY_NAME: community["communityName"],
+                },
+            )
+
+        # Multiple communities, let user choose
+        return await self.async_step_community()
+
+    async def async_step_community(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle community selection step."""
+        if user_input is not None:
+            community_id = user_input[CONF_COMMUNITY_ID]
+            # Find the selected community name
+            community_name = ""
+            for c in self._communities:
+                if str(c["communityId"]) == community_id:
+                    community_name = c["communityName"]
+                    break
+
+            await self._client.async_set_community(community_id, community_name)
+            await self.async_set_unique_id(self._phone)
+            self._abort_if_unique_id_configured()
+            return self.async_create_entry(
+                title=f"{community_name} ({self._phone})",
+                data={
+                    CONF_PHONE: self._phone,
+                    CONF_PASSWORD: self._password,
+                    CONF_COMMUNITY_ID: community_id,
+                    CONF_COMMUNITY_NAME: community_name,
+                },
+            )
+
+        # Build options for active communities
+        active = [c for c in self._communities if c.get("status") == 1]
+        options = {
+            str(c["communityId"]): f"{c['communityName']} ({c['cityName']})"
+            for c in active
+        }
+
+        return self.async_show_form(
+            step_id="community",
+            data_schema=vol.Schema(
+                {vol.Required(CONF_COMMUNITY_ID): vol.In(options)}
+            ),
         )

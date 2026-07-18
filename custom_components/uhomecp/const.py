@@ -6,6 +6,7 @@ DOMAIN = "uhomecp"
 BASE_URL = "https://www.uhomecp.com"
 LOGIN_URL = "/authc-restapi/v1/user/auth/login"
 CAPTCHA_URL = "/authc-restapi/v1/auth/code/getImgCode"
+COMMUNITY_LIST_URL = "/uhomecp-sso/v1/community/findMyCommunity"
 DOOR_LIST_URL = "/door-restapi/v1/userapp/doorList"
 OPEN_DOOR_URL = "/uhomecp-app/v1/userapp/opendoor/submit.json"
 
@@ -28,6 +29,8 @@ DEFAULT_HEADERS = {
 # Config flow
 CONF_PHONE = "phone"
 CONF_PASSWORD = "password"
+CONF_COMMUNITY_ID = "community_id"
+CONF_COMMUNITY_NAME = "community_name"
 
 # Update interval (seconds)
 UPDATE_INTERVAL = 300  # 5 minutes
