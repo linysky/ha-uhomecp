@@ -36,7 +36,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         await client.async_login()
     except CaptchaRequired:
-        _LOGGER.error("Captcha required during setup - this should not happen")
+        _LOGGER.error(
+            "Captcha required during setup - please reconfigure the integration"
+        )
         return False
     except UHomeCPApiError as err:
         _LOGGER.error("Failed to login: %s", err)
@@ -53,11 +55,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("Failed to get doors: %s", err)
         return False
 
+    async def _async_update_data():
+        """Fetch door data from the API."""
+        try:
+            return await client.async_get_doors()
+        except CaptchaRequired as err:
+            raise UpdateFailed(
+                "Session expired and re-login requires captcha. "
+                "Please reconfigure the integration."
+            ) from err
+        except UHomeCPApiError as err:
+            raise UpdateFailed(f"Failed to fetch door data: {err}") from err
+
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name=DOMAIN,
-        update_method=client.async_get_doors,
+        update_method=_async_update_data,
         update_interval=timedelta(seconds=UPDATE_INTERVAL),
     )
 

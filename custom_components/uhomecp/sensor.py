@@ -80,7 +80,7 @@ class UHomeCPDoorCountSensor(CoordinatorEntity, SensorEntity):
 
     _attr_has_entity_name = True
     _attr_icon = "mdi:door"
-    _attr_native_unit_of_measurement = "个"
+    _attr_native_unit_of_measurement = "doors"
 
     def __init__(
         self,

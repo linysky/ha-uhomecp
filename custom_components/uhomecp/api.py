@@ -201,7 +201,7 @@ class UHomeCPClient:
 
         if result.get("code") == CODE_SESSION_EXPIRED:
             _LOGGER.warning("Session expired, re-logging in")
-            self.login()
+            self.login()  # may raise CaptchaRequired or LoginError
             resp = self.session.request(method, url, **kwargs)
             result = resp.json()
 
