@@ -28,4 +28,4 @@ Thumbs.db
 # HA specific
 *.log
 .secrets
-docs/
+docs/RELEASE.md
