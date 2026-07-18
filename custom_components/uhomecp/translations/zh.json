@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "设置 U管家门禁",
+        "description": "输入你的 U管家（uhomecp.com）账号信息",
+        "data": {
+          "phone": "手机号",
+          "password": "密码"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "手机号或密码错误",
+      "unknown": "未知错误，请稍后重试"
+    },
+    "abort": {
+      "already_configured": "该账号已配置"
+    }
+  }
+}

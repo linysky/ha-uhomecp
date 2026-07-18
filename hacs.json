@@ -1,0 +1,6 @@
+{
+  "name": "U管家门禁",
+  "homeassistant": "2024.1.0",
+  "render_readme": true,
+  "filename": "ha-uhomecp.zip"
+}

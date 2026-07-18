@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Setup U管家门禁",
+        "description": "Enter your U管家 (uhomecp.com) account credentials",
+        "data": {
+          "phone": "Phone Number",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid phone number or password",
+      "unknown": "Unknown error, please try again later"
+    },
+    "abort": {
+      "already_configured": "This account is already configured"
+    }
+  }
+}
