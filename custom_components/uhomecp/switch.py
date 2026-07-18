@@ -1,4 +1,4 @@
-"""Switch platform for U管家门禁 - each door is a switch entity."""
+"""Switch platform for uhomecp - each door is a switch entity."""
 
 import asyncio
 import logging
@@ -22,7 +22,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up U管家门禁 switch entities from a config entry."""
+    """Set up uhomecp switch entities from a config entry."""
     data = hass.data[DOMAIN][entry.entry_id]
     client: UHomeCPClient = data["client"]
     coordinator = data["coordinator"]

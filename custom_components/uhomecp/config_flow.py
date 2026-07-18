@@ -1,4 +1,4 @@
-"""Config flow for U管家门禁 integration."""
+"""Config flow for uhomecp integration."""
 
 import logging
 from typing import Any
@@ -42,7 +42,7 @@ STEP_CAPTCHA_DATA_SCHEMA = vol.Schema(
 
 
 class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for U管家门禁."""
+    """Handle a config flow for uhomecp."""
 
     VERSION = 1
 
@@ -179,7 +179,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(self._phone)
             self._abort_if_unique_id_configured()
             return self.async_create_entry(
-                title=f"U管家 ({self._phone})",
+                title=f"uhomecp {self._phone}",
                 data={
                     CONF_PHONE: self._phone,
                     CONF_PASSWORD: self._password,

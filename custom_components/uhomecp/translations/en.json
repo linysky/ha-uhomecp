@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Setup U管家门禁",
-        "description": "Enter your U管家 (uhomecp.com) account credentials",
+        "title": "Setup uhomecp",
+        "description": "Enter your uhomecp (uhomecp.com) account credentials",
         "data": {
           "phone": "Phone Number",
           "password": "Password"

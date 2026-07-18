@@ -1,6 +1,6 @@
 {
   "domain": "uhomecp",
-  "name": "U管家门禁",
+  "name": "uhomecp",
   "codeowners": ["@linysky"],
   "config_flow": true,
   "dependencies": [],

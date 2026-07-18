@@ -1,4 +1,4 @@
-"""Constants for U管家门禁 integration."""
+"""Constants for uhomecp integration."""
 
 DOMAIN = "uhomecp"
 

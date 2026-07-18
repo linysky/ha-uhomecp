@@ -1,4 +1,4 @@
-"""API client for U管家门禁."""
+"""API client for uhomecp."""
 
 import asyncio
 import base64
@@ -43,7 +43,7 @@ def encrypt_password(password: str) -> str:
 
 
 class UHomeCPApiError(Exception):
-    """Base exception for U管家 API errors."""
+    """Base exception for uhomecp API errors."""
 
 
 class LoginError(UHomeCPApiError):
@@ -63,7 +63,7 @@ class CaptchaRequired(UHomeCPApiError):
 
 
 class UHomeCPClient:
-    """U管家 API client."""
+    """uhomecp API client."""
 
     def __init__(self, phone: str, password: str) -> None:
         self.phone = phone

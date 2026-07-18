@@ -1,4 +1,4 @@
-"""The U管家门禁 integration."""
+"""The uhomecp integration."""
 
 import logging
 from datetime import timedelta
@@ -24,7 +24,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up U管家门禁 from a config entry."""
+    """Set up uhomecp from a config entry."""
     phone = entry.data[CONF_PHONE]
     password = entry.data[CONF_PASSWORD]
     community_id = entry.data.get(CONF_COMMUNITY_ID, "")

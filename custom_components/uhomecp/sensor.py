@@ -1,4 +1,4 @@
-"""Sensor platform for U管家门禁 - exposes community name."""
+"""Sensor platform for uhomecp - exposes community name."""
 
 import logging
 from typing import Any
@@ -20,11 +20,11 @@ _LOGGER = logging.getLogger(__name__)
 def get_device_info(entry: ConfigEntry) -> DeviceInfo:
     """Return device info for grouping entities by community."""
     community_id = entry.data.get(CONF_COMMUNITY_ID, "")
-    community_name = entry.data.get(CONF_COMMUNITY_NAME, "U管家门禁")
+    community_name = entry.data.get(CONF_COMMUNITY_NAME, "uhomecp")
     return DeviceInfo(
         identifiers={(DOMAIN, f"{entry.entry_id}_{community_id}")},
         name=community_name,
-        manufacturer="四格互联 SEGI",
+        manufacturer="SEGI",
         entry_type=DeviceEntryType.SERVICE,
     )
 
@@ -34,7 +34,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up U管家门禁 sensor entities from a config entry."""
+    """Set up uhomecp sensor entities from a config entry."""
     data = hass.data[DOMAIN][entry.entry_id]
     client: UHomeCPClient = data["client"]
     coordinator = data["coordinator"]
