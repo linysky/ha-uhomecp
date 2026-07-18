@@ -5,7 +5,6 @@
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/linysky/ha-uhomecp",
-  "icon": "mdi:door",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/linysky/ha-uhomecp/issues",
   "requirements": ["cryptography>=41.0.0"],
