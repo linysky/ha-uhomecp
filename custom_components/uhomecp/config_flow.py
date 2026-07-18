@@ -53,6 +53,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._password: str = ""
         self._random_token: str = ""
         self._img_code: str = ""
+        self._cookies: dict[str, str] = {}
         self._communities: list[dict[str, Any]] = []
 
     async def async_step_user(
@@ -144,7 +145,10 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def _after_login(self) -> FlowResult:
-        """After successful login, get communities and show selection."""
+        """After successful login, save cookies and get communities."""
+        # Save session cookies for reuse in __init__.py setup
+        self._cookies = self._client.export_cookies()
+
         try:
             self._communities = await self._client.async_get_communities()
         except Exception:
@@ -156,6 +160,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data={
                     CONF_PHONE: self._phone,
                     CONF_PASSWORD: self._password,
+                    "cookies": self._cookies,
                 },
             )
 
@@ -178,6 +183,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_PASSWORD: self._password,
                     CONF_COMMUNITY_ID: community_id,
                     CONF_COMMUNITY_NAME: community_name,
+                    "cookies": self._cookies,
                 },
             )
 

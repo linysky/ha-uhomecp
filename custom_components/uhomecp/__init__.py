@@ -29,31 +29,43 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     password = entry.data[CONF_PASSWORD]
     community_id = entry.data.get(CONF_COMMUNITY_ID, "")
     community_name = entry.data.get(CONF_COMMUNITY_NAME, "")
+    saved_cookies = entry.data.get("cookies", {})
 
     client = UHomeCPClient(phone, password)
 
-    # Login
-    try:
-        await client.async_login()
-    except CaptchaRequired:
-        _LOGGER.error(
-            "Captcha required during setup - please reconfigure the integration"
-        )
-        return False
-    except UHomeCPApiError as err:
-        _LOGGER.error("Failed to login: %s", err)
-        return False
+    # Try to reuse saved cookies first to avoid triggering captcha
+    if saved_cookies:
+        client.import_cookies(saved_cookies)
+        _LOGGER.debug("Restored %d cookies from config entry", len(saved_cookies))
 
-    # Set community
+    # Verify the session is still valid by fetching doors
     if community_id:
         await client.async_set_community(community_id, community_name)
 
-    # Get initial door list
     try:
         await client.async_get_doors()
-    except UHomeCPApiError as err:
-        _LOGGER.error("Failed to get doors: %s", err)
-        return False
+    except Exception:
+        # Cookies expired or invalid, need to re-login
+        _LOGGER.info("Saved session expired, re-logging in")
+        try:
+            await client.async_login()
+        except CaptchaRequired:
+            _LOGGER.error(
+                "Captcha required during setup - please reconfigure the integration"
+            )
+            return False
+        except UHomeCPApiError as err:
+            _LOGGER.error("Failed to login: %s", err)
+            return False
+
+        if community_id:
+            await client.async_set_community(community_id, community_name)
+
+        try:
+            await client.async_get_doors()
+        except UHomeCPApiError as err:
+            _LOGGER.error("Failed to get doors: %s", err)
+            return False
 
     async def _async_update_data():
         """Fetch door data from the API."""
