@@ -11,7 +11,7 @@
       },
       "captcha": {
         "title": "Enter Captcha",
-        "description": "Please enter the captcha shown in the image\n\n{captcha_image}",
+        "description": "Open the following URL in your browser to view the captcha image, then enter the captcha:\n\n{captcha_url}\n\n(Requires www folder in HA config directory)",
         "data": {
           "captcha": "Captcha"
         }

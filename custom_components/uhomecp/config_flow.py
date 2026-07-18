@@ -1,6 +1,7 @@
 """Config flow for U管家门禁 integration."""
 
 import logging
+import os
 from typing import Any
 
 import voluptuous as vol
@@ -28,6 +29,21 @@ STEP_CAPTCHA_DATA_SCHEMA = vol.Schema(
         vol.Required("captcha"): str,
     }
 )
+
+
+def _save_captcha_image(hass: HomeAssistant, img_base64: str) -> str:
+    """Save captcha image to HA www folder and return the URL path."""
+    import base64
+
+    www_dir = hass.config.path("www")
+    os.makedirs(www_dir, exist_ok=True)
+
+    img_data = base64.b64decode(img_base64)
+    filepath = os.path.join(www_dir, "uhomecp_captcha.jpg")
+    with open(filepath, "wb") as f:
+        f.write(img_data)
+
+    return "/local/uhomecp_captcha.jpg"
 
 
 class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -106,12 +122,17 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 return await self._after_login()
 
+        # Save captcha image to www folder
+        captcha_url = await self.hass.async_add_executor_job(
+            _save_captcha_image, self.hass, self._img_code
+        )
+
         return self.async_show_form(
             step_id="captcha",
             data_schema=STEP_CAPTCHA_DATA_SCHEMA,
             errors=errors,
             description_placeholders={
-                "captcha_image": f"![captcha](data:image/jpeg;base64,{self._img_code})",
+                "captcha_url": f"http://你的HA地址:8123{captcha_url}",
             },
         )
 
@@ -121,7 +142,6 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._communities = await self._client.async_get_communities()
         except Exception:
             _LOGGER.exception("Failed to get communities")
-            # If we can't get communities, just create entry without community
             await self.async_set_unique_id(self._phone)
             self._abort_if_unique_id_configured()
             return self.async_create_entry(
@@ -132,14 +152,12 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 },
             )
 
-        # Filter active communities only
         active = [c for c in self._communities if c.get("status") == 1]
 
         if len(active) == 0:
             return self.async_abort(reason="no_communities")
 
         if len(active) == 1:
-            # Only one community, auto-select
             community = active[0]
             community_id = str(community["communityId"])
             community_name = community["communityName"]
@@ -156,7 +174,6 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 },
             )
 
-        # Multiple communities, let user choose
         return await self.async_step_community()
 
     async def async_step_community(
@@ -184,7 +201,6 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 },
             )
 
-        # Build options for active communities
         active = [c for c in self._communities if c.get("status") == 1]
         options = {
             str(c["communityId"]): f"{c['communityName']} ({c['cityName']})"
