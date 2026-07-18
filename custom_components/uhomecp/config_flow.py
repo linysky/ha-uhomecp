@@ -135,18 +135,18 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if len(active) == 1:
             # Only one community, auto-select
             community = active[0]
-            await self._client.async_set_community(
-                str(community["communityId"]), community["communityName"]
-            )
-            await self.async_set_unique_id(self._phone)
+            community_id = str(community["communityId"])
+            community_name = community["communityName"]
+            await self._client.async_set_community(community_id, community_name)
+            await self.async_set_unique_id(f"{self._phone}_{community_id}")
             self._abort_if_unique_id_configured()
             return self.async_create_entry(
-                title=f"{community['communityName']} ({self._phone})",
+                title=f"{community_name} ({self._phone})",
                 data={
                     CONF_PHONE: self._phone,
                     CONF_PASSWORD: self._password,
-                    CONF_COMMUNITY_ID: str(community["communityId"]),
-                    CONF_COMMUNITY_NAME: community["communityName"],
+                    CONF_COMMUNITY_ID: community_id,
+                    CONF_COMMUNITY_NAME: community_name,
                 },
             )
 
@@ -159,7 +159,6 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle community selection step."""
         if user_input is not None:
             community_id = user_input[CONF_COMMUNITY_ID]
-            # Find the selected community name
             community_name = ""
             for c in self._communities:
                 if str(c["communityId"]) == community_id:
@@ -167,7 +166,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     break
 
             await self._client.async_set_community(community_id, community_name)
-            await self.async_set_unique_id(self._phone)
+            await self.async_set_unique_id(f"{self._phone}_{community_id}")
             self._abort_if_unique_id_configured()
             return self.async_create_entry(
                 title=f"{community_name} ({self._phone})",
