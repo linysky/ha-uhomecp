@@ -132,7 +132,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=STEP_CAPTCHA_DATA_SCHEMA,
             errors=errors,
             description_placeholders={
-                "captcha_url": f"http://你的HA地址:8123{captcha_url}",
+                "tip": f"![captcha]({captcha_url})",
             },
         )
 
