@@ -185,8 +185,8 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_PASSWORD: self._password,
                     CONF_COMMUNITY_ID: community_id,
                     CONF_COMMUNITY_NAME: community_name,
-                    "_cookies": _cookies,
-                    "_user_info": _user_info,
+                    "_cookies": self._cookies,
+                    "_user_info": self._user_info,
                 },
             )
 
