@@ -2,36 +2,36 @@
   "config": {
     "step": {
       "user": {
-        "title": "Setup U管家门禁",
-        "description": "Enter your U管家 (uhomecp.com) account credentials",
+        "title": "设置 U管家门禁",
+        "description": "输入你的 U管家（uhomecp.com）账号信息",
         "data": {
-          "phone": "Phone Number",
-          "password": "Password"
+          "phone": "手机号",
+          "password": "密码"
         }
       },
       "captcha": {
-        "title": "Enter Captcha",
-        "description": "Please enter the captcha shown in the image\n\n{captcha_image}",
+        "title": "输入验证码",
+        "description": "请输入图片中的验证码\n\n{captcha_image}",
         "data": {
-          "captcha": "Captcha"
+          "captcha": "验证码"
         }
       },
       "community": {
-        "title": "Select Community",
-        "description": "Select the community you want to manage",
+        "title": "选择小区",
+        "description": "请选择你要管理的小区",
         "data": {
-          "community_id": "Community"
+          "community_id": "小区"
         }
       }
     },
     "error": {
-      "invalid_auth": "Invalid phone number or password",
-      "invalid_captcha": "Invalid captcha, please try again",
-      "unknown": "Unknown error, please try again later"
+      "invalid_auth": "手机号或密码错误",
+      "invalid_captcha": "验证码错误，请重试",
+      "unknown": "未知错误，请稍后重试"
     },
     "abort": {
-      "already_configured": "This account is already configured",
-      "no_communities": "No communities found"
+      "already_configured": "该账号已配置",
+      "no_communities": "未找到可用的小区"
     }
   }
 }
