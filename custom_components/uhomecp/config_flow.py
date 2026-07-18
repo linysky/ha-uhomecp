@@ -2,10 +2,12 @@
 
 import logging
 import os
+import base64
 from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.components import persistent_notification
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
@@ -29,21 +31,6 @@ STEP_CAPTCHA_DATA_SCHEMA = vol.Schema(
         vol.Required("captcha"): str,
     }
 )
-
-
-def _save_captcha_image(hass: HomeAssistant, img_base64: str) -> str:
-    """Save captcha image to HA www folder and return the URL path."""
-    import base64
-
-    www_dir = hass.config.path("www")
-    os.makedirs(www_dir, exist_ok=True)
-
-    img_data = base64.b64decode(img_base64)
-    filepath = os.path.join(www_dir, "uhomecp_captcha.jpg")
-    with open(filepath, "wb") as f:
-        f.write(img_data)
-
-    return "/local/uhomecp_captcha.jpg"
 
 
 class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -120,20 +107,33 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception during captcha login")
                 errors["base"] = "unknown"
             else:
+                # Dismiss the notification
+                persistent_notification.dismiss(self.hass, f"{DOMAIN}_captcha")
                 return await self._after_login()
 
-        # Save captcha image to www folder
-        captcha_url = await self.hass.async_add_executor_job(
-            _save_captcha_image, self.hass, self._img_code
+        # Save captcha image to www folder and show notification
+        www_dir = self.hass.config.path("www")
+        await self.hass.async_add_executor_job(os.makedirs, www_dir, True)
+
+        img_data = base64.b64decode(self._img_code)
+        filepath = os.path.join(www_dir, "uhomecp_captcha.jpg")
+        await self.hass.async_add_executor_job(
+            lambda: open(filepath, "wb").write(img_data)
+        )
+
+        # Show persistent notification with the image
+        persistent_notification.create(
+            self.hass,
+            f'<img src="/local/uhomecp_captcha.jpg" alt="验证码" style="max-width:200px;">'
+            f"\n\n请在下方输入验证码：",
+            title="U管家验证码",
+            notification_id=f"{DOMAIN}_captcha",
         )
 
         return self.async_show_form(
             step_id="captcha",
             data_schema=STEP_CAPTCHA_DATA_SCHEMA,
             errors=errors,
-            description_placeholders={
-                "tip": f"![captcha]({captcha_url})",
-            },
         )
 
     async def _after_login(self) -> FlowResult:
