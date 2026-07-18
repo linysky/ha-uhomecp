@@ -11,7 +11,7 @@
       },
       "captcha": {
         "title": "输入验证码",
-        "description": "请输入图片中的验证码（请查看右上角通知栏的验证码图片）",
+        "description": "请输入图片中的验证码\n\n{tip}",
         "data": {
           "captcha": "验证码"
         }

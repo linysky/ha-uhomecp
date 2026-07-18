@@ -11,7 +11,7 @@
       },
       "captcha": {
         "title": "Enter Captcha",
-        "description": "Please enter the captcha (check the notification for the captcha image)",
+        "description": "Please enter the captcha shown in the image\n\n{tip}",
         "data": {
           "captcha": "Captcha"
         }
