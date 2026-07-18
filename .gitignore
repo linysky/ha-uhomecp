@@ -28,3 +28,4 @@ Thumbs.db
 # HA specific
 *.log
 .secrets
+docs/
