@@ -68,6 +68,23 @@ class UHomeCPClient:
         self.community_id: str = ""
         self.community_name: str = ""
         self.doors: list[dict[str, Any]] = []
+        self._warmed_up = False
+
+    def _warmup(self) -> None:
+        """Warm up the session by getting r_ua cookie from server.
+
+        The server requires a r_ua cookie for login validation.
+        This cookie is set in the response of the first request.
+        """
+        if self._warmed_up:
+            return
+        self.session.post(
+            f"{BASE_URL}{LOGIN_URL}",
+            data="loginType=1&password=warmup&tel=00000000000",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        self._warmed_up = True
+        _LOGGER.debug("Warmup complete, cookies: %s", dict(self.session.cookies))
 
     def login(self) -> dict[str, Any]:
         """Login with phone + password (RSA encrypted).
@@ -79,6 +96,7 @@ class UHomeCPClient:
             CaptchaRequired: if captcha is needed (contains img_code + random_token)
             LoginError: on other failures
         """
+        self._warmup()
         encrypted_pwd = encrypt_password(self.password)
 
         data = {
@@ -122,6 +140,7 @@ class UHomeCPClient:
         Returns:
             {"success": True, "userId": "..."} on success
         """
+        self._warmup()
         encrypted_pwd = encrypt_password(self.password)
 
         data = {
