@@ -5,12 +5,21 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
+from homeassistant.helpers.selector import (
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
 
 from .api import AccountLocked, CaptchaRequired, LoginError, UHomeCPClient
-from .const import CONF_COMMUNITY_ID, CONF_COMMUNITY_NAME, CONF_PASSWORD, CONF_PHONE, DOMAIN
+from .const import (
+    CONF_COMMUNITY_ID,
+    CONF_COMMUNITY_NAME,
+    CONF_PASSWORD,
+    CONF_PHONE,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,6 +39,8 @@ STEP_CAPTCHA_DATA_SCHEMA = vol.Schema(
 )
 
 
+
+
 class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for U管家门禁."""
 
@@ -43,7 +54,6 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._random_token: str = ""
         self._img_code: str = ""
         self._communities: list[dict[str, Any]] = []
-        self._errors: dict[str, str] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -61,6 +71,20 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except CaptchaRequired as err:
                 self._img_code = err.img_code
                 self._random_token = err.random_token
+                # Some servers return 20010 but no captcha payload; fetch explicitly
+                if not self._img_code:
+                    try:
+                        self._img_code, self._random_token = (
+                            await self._client.async_get_captcha()
+                        )
+                    except Exception:
+                        _LOGGER.exception("Failed to fetch captcha image")
+                        errors["base"] = "unknown"
+                        return self.async_show_form(
+                            step_id="user",
+                            data_schema=STEP_USER_DATA_SCHEMA,
+                            errors=errors,
+                        )
                 return await self.async_step_captcha()
             except AccountLocked as err:
                 _LOGGER.error("Account locked: %s", err)
@@ -101,6 +125,7 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         await self._client.async_get_captcha()
                     )
                 except Exception:
+                    _LOGGER.exception("Failed to refresh captcha")
                     errors["base"] = "unknown"
             except Exception as err:
                 _LOGGER.exception("Unexpected error during captcha login: %s", err)
@@ -108,14 +133,14 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 return await self._after_login()
 
-        # Build captcha image as markdown (same pattern as xiaomi_miot)
-        captcha_md = f"![captcha](data:image/jpeg;base64,{self._img_code})"
+        # Build captcha image as HTML img tag (HA config flow supports HTML, not markdown)
+        captcha_html = f'<img src="data:image/jpeg;base64,{self._img_code}" style="width:200px;">'
 
         return self.async_show_form(
             step_id="captcha",
             data_schema=STEP_CAPTCHA_DATA_SCHEMA,
             errors=errors,
-            description_placeholders={"tip": captcha_md},
+            description_placeholders={"tip": captcha_html},
         )
 
     async def _after_login(self) -> FlowResult:
