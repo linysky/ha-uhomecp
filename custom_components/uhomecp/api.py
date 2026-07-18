@@ -189,33 +189,46 @@ class UHomeCPClient:
         self.community_name = community_name
         _LOGGER.info("Community set to %s (%s)", community_name, community_id)
 
+    def _ensure_login(self) -> None:
+        """Ensure we have a valid session, re-login if needed."""
+        if not self.logged_in:
+            raise UHomeCPApiError("Not logged in")
+
+    def _request_with_relogin(self, method: str, url: str, **kwargs) -> dict:
+        """Make an API request with automatic re-login on session expiry."""
+        resp = self.session.request(method, url, **kwargs)
+        result = resp.json()
+
+        if result.get("code") == CODE_SESSION_EXPIRED:
+            _LOGGER.warning("Session expired, re-logging in")
+            self.login()
+            resp = self.session.request(method, url, **kwargs)
+            result = resp.json()
+
+        return result
+
     def get_doors(self) -> list[dict[str, Any]]:
         """Get list of doors for the user's community.
 
         Returns list of door dicts with keys: doorId, doorIdStr, name, doorType.
         """
-        if not self.logged_in:
-            raise UHomeCPApiError("Not logged in")
+        self._ensure_login()
 
-        resp = self.session.get(
+        result = self._request_with_relogin(
+            "GET",
             f"{BASE_URL}{DOOR_LIST_URL}",
             params={
                 "communityId": self.community_id,
                 "custId": str(self.user_info.get("userId", "")),
             },
         )
-        result = resp.json()
 
         if result.get("code") == CODE_SUCCESS:
             self.doors = result.get("data", [])
-            # Extract communityId from first door if not set
             if self.doors and not self.community_id:
                 self.community_id = str(self.doors[0].get("communityId", ""))
             _LOGGER.info("Found %d doors", len(self.doors))
             return self.doors
-
-        if result.get("code") == CODE_SESSION_EXPIRED:
-            raise UHomeCPApiError("Session expired, please re-login")
 
         msg = result.get("msg") or result.get("message", "Unknown error")
         raise UHomeCPApiError(f"Failed to get doors: {msg}")
@@ -231,8 +244,7 @@ class UHomeCPClient:
 
         Returns True on success.
         """
-        if not self.logged_in:
-            raise UHomeCPApiError("Not logged in")
+        self._ensure_login()
 
         data = {
             "custId": str(self.user_info.get("userId", "")),
@@ -244,18 +256,15 @@ class UHomeCPClient:
             "appType": "2",
         }
 
-        resp = self.session.post(
+        result = self._request_with_relogin(
+            "POST",
             f"{BASE_URL}{OPEN_DOOR_URL}",
-            json=data,  # application/json, not form-urlencoded
+            json=data,
         )
-        result = resp.json()
 
         if result.get("code") == CODE_SUCCESS:
             _LOGGER.info("Door %s opened successfully", door_id)
             return True
-
-        if result.get("code") == CODE_SESSION_EXPIRED:
-            raise UHomeCPApiError("Session expired, please re-login")
 
         msg = result.get("msg") or result.get("message", "Unknown error")
         _LOGGER.error("Failed to open door %s: %s", door_id, msg)

@@ -1,7 +1,7 @@
 {
   "domain": "uhomecp",
   "name": "U管家门禁",
-  "codeowners": [],
+  "codeowners": ["@linooy"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/linooy/ha-uhomecp",

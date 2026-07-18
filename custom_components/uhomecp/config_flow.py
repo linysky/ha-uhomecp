@@ -7,6 +7,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 
 from .api import CaptchaRequired, LoginError, UHomeCPClient
 from .const import CONF_COMMUNITY_ID, CONF_COMMUNITY_NAME, CONF_PASSWORD, CONF_PHONE, DOMAIN
@@ -16,7 +17,9 @@ _LOGGER = logging.getLogger(__name__)
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_PHONE): str,
-        vol.Required(CONF_PASSWORD): str,
+        vol.Required(CONF_PASSWORD): TextSelector(
+            TextSelectorConfig(type=TextSelectorType.PASSWORD)
+        ),
     }
 )
 
