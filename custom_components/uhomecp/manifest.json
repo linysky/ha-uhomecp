@@ -1,12 +1,12 @@
 {
   "domain": "uhomecp",
   "name": "U管家门禁",
-  "codeowners": ["@linooy"],
+  "codeowners": ["@linysky"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/linooy/ha-uhomecp",
+  "documentation": "https://github.com/linysky/ha-uhomecp",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/linooy/ha-uhomecp/issues",
+  "issue_tracker": "https://github.com/linysky/ha-uhomecp/issues",
   "requirements": ["cryptography>=41.0.0"],
   "version": "1.0.0"
 }
