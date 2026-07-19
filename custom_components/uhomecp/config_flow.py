@@ -57,6 +57,101 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._user_info: dict[str, Any] = {}
         self._communities: list[dict[str, Any]] = []
 
+    async def async_step_reauth(
+        self, entry_data: dict[str, Any]
+    ) -> FlowResult:
+        """Handle reauth flow - triggered when session expires + captcha needed."""
+        self._phone = entry_data[CONF_PHONE]
+        self._password = entry_data[CONF_PASSWORD]
+        self._client = UHomeCPClient(self._phone, self._password)
+
+        try:
+            await self._client.async_login()
+        except CaptchaRequired as err:
+            self._img_code = err.img_code
+            self._random_token = err.random_token
+            if not self._img_code:
+                try:
+                    self._img_code, self._random_token = (
+                        await self._client.async_get_captcha()
+                    )
+                except Exception:
+                    _LOGGER.exception("Failed to fetch captcha image")
+                    return self.async_abort(reason="reauth_failed")
+            return await self.async_step_reauth_captcha()
+        except Exception as err:
+            _LOGGER.exception("Reauth login failed: %s", err)
+            return self.async_abort(reason="reauth_failed")
+        else:
+            return await self._after_reauth()
+
+    async def async_step_reauth_captcha(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle captcha step during reauth."""
+        errors: dict[str, str] = {}
+        captcha_html = f'<img src="data:image/jpeg;base64,{self._img_code}" style="width:200px;">'
+
+        if user_input is not None:
+            captcha = user_input["captcha"]
+
+            if not captcha.strip():
+                try:
+                    self._img_code, self._random_token = (
+                        await self._client.async_get_captcha()
+                    )
+                except Exception:
+                    _LOGGER.exception("Failed to refresh captcha")
+                    errors["base"] = "unknown"
+                captcha_html = f'<img src="data:image/jpeg;base64,{self._img_code}" style="width:200px;">'
+                return self.async_show_form(
+                    step_id="reauth_captcha",
+                    data_schema=STEP_CAPTCHA_DATA_SCHEMA,
+                    errors=errors,
+                    description_placeholders={"tip": captcha_html},
+                )
+
+            try:
+                await self._client.async_login_with_captcha(
+                    captcha, self._random_token
+                )
+            except LoginError as err:
+                _LOGGER.error("Reauth captcha failed: %s", err)
+                errors["base"] = "invalid_captcha"
+                try:
+                    self._img_code, self._random_token = (
+                        await self._client.async_get_captcha()
+                    )
+                except Exception:
+                    _LOGGER.exception("Failed to refresh captcha")
+                    errors["base"] = "unknown"
+            except Exception as err:
+                _LOGGER.exception("Unexpected error during reauth: %s", err)
+                errors["base"] = "unknown"
+            else:
+                return await self._after_reauth()
+
+        return self.async_show_form(
+            step_id="reauth_captcha",
+            data_schema=STEP_CAPTCHA_DATA_SCHEMA,
+            errors=errors,
+            description_placeholders={"tip": captcha_html},
+        )
+
+    async def _after_reauth(self) -> FlowResult:
+        """After successful reauth, update config entry."""
+        self._cookies = self._client.get_session_cookies()
+        self._user_info = self._client.user_info
+
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        if entry is None:
+            return self.async_abort(reason="reauth_failed")
+
+        new_data = {**entry.data, "_cookies": self._cookies, "_user_info": self._user_info}
+        self.hass.config_entries.async_update_entry(entry, data=new_data)
+        await self.hass.config_entries.async_reload(entry.entry_id)
+        return self.async_abort(reason="reauth_successful")
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:

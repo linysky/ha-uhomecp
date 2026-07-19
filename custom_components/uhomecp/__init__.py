@@ -4,6 +4,7 @@ import logging
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -43,10 +44,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         try:
             await client.async_login()
         except CaptchaRequired:
-            _LOGGER.error(
-                "Captcha required during setup - please reconfigure the integration"
+            raise ConfigEntryAuthFailed(
+                "Captcha required - please reconfigure the integration"
             )
-            return False
         except UHomeCPApiError as err:
             _LOGGER.error("Failed to login: %s", err)
             return False
@@ -62,10 +62,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         try:
             await client.async_login()
         except CaptchaRequired:
-            _LOGGER.error(
-                "Captcha required during setup - please reconfigure the integration"
+            raise ConfigEntryAuthFailed(
+                "Captcha required - please reconfigure the integration"
             )
-            return False
         except UHomeCPApiError as err:
             _LOGGER.error("Failed to login: %s", err)
             return False
@@ -84,9 +83,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         try:
             return await client.async_get_doors()
         except CaptchaRequired as err:
-            raise UpdateFailed(
-                "Session expired and re-login requires captcha. "
-                "Please reconfigure the integration."
+            raise ConfigEntryAuthFailed(
+                "Session expired, re-login requires captcha"
             ) from err
         except UHomeCPApiError as err:
             raise UpdateFailed(f"Failed to fetch door data: {err}") from err

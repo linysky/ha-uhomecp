@@ -16,6 +16,13 @@
           "captcha": "验证码"
         }
       },
+      "reauth_captcha": {
+        "title": "重新验证",
+        "description": "Session 过期，请输入验证码重新登录\n\n{tip}",
+        "data": {
+          "captcha": "验证码"
+        }
+      },
       "community": {
         "title": "选择小区",
         "description": "请选择你要管理的小区",
@@ -32,7 +39,9 @@
     },
     "abort": {
       "already_configured": "该账号已配置",
-      "no_communities": "未找到可用的小区"
+      "no_communities": "未找到可用的小区",
+      "reauth_successful": "重新验证成功",
+      "reauth_failed": "重新验证失败，请删除集成后重新添加"
     }
   }
 }
