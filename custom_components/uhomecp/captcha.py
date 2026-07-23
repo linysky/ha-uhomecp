@@ -42,7 +42,8 @@ def recognize_captcha(img_base64: str) -> str | None:
         img_bytes = base64.b64decode(img_base64)
         result = ocr.classification(img_bytes)
 
-        if result and len(result) == 4 and result.isalnum():
+        # Validate: should be 4 ASCII alphanumeric chars
+        if result and len(result) == 4 and result.isascii() and result.isalnum():
             _LOGGER.info("Captcha recognized: %s", result)
             return result
 
