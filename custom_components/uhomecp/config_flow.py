@@ -13,6 +13,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .api import AccountLocked, CaptchaRequired, LoginError, UHomeCPClient
+from .captcha import recognize_captcha
 from .const import (
     CONF_COMMUNITY_ID,
     CONF_COMMUNITY_NAME,
@@ -128,6 +129,24 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception as err:
                 _LOGGER.exception("Unexpected error during reauth: %s", err)
                 errors["base"] = "unknown"
+            else:
+                return await self._after_reauth()
+
+        # Auto-try OCR before showing form
+        auto_result = await self.hass.async_add_executor_job(
+            recognize_captcha, self._img_code
+        )
+        if auto_result:
+            _LOGGER.info("Auto-recognized captcha for reauth: %s", auto_result)
+            try:
+                await self._client.async_login_with_captcha(
+                    auto_result, self._random_token
+                )
+            except AccountLocked as err:
+                _LOGGER.error("Account locked: %s", err)
+                errors["base"] = "account_locked"
+            except Exception as err:
+                _LOGGER.warning("Auto-reauth failed: %s", err)
             else:
                 return await self._after_reauth()
 
@@ -252,6 +271,24 @@ class UHomeCPConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception as err:
                 _LOGGER.exception("Unexpected error during captcha login: %s", err)
                 errors["base"] = "unknown"
+            else:
+                return await self._after_login()
+
+        # Auto-try OCR before showing form
+        auto_result = await self.hass.async_add_executor_job(
+            recognize_captcha, self._img_code
+        )
+        if auto_result:
+            _LOGGER.info("Auto-recognized captcha: %s, trying login", auto_result)
+            try:
+                await self._client.async_login_with_captcha(
+                    auto_result, self._random_token
+                )
+            except AccountLocked as err:
+                _LOGGER.error("Account locked: %s", err)
+                errors["base"] = "account_locked"
+            except Exception as err:
+                _LOGGER.warning("Auto-login failed: %s", err)
             else:
                 return await self._after_login()
 

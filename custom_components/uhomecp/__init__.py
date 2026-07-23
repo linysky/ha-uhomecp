@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import CaptchaRequired, UHomeCPApiError, UHomeCPClient
+from .captcha import recognize_captcha
 from .const import (
     CONF_COMMUNITY_ID,
     CONF_COMMUNITY_NAME,
@@ -43,10 +44,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     else:
         try:
             await client.async_login()
-        except CaptchaRequired:
-            raise ConfigEntryAuthFailed(
-                "Captcha required - please reconfigure the integration"
+        except CaptchaRequired as err:
+            auto_result = await hass.async_add_executor_job(
+                recognize_captcha, err.img_code
             )
+            if auto_result:
+                _LOGGER.info("Auto-recognized captcha during setup: %s", auto_result)
+                try:
+                    await client.async_login_with_captcha(auto_result, err.random_token)
+                except Exception:
+                    raise ConfigEntryAuthFailed("Auto-login failed")
+            else:
+                raise ConfigEntryAuthFailed(
+                    "Captcha required - please reconfigure the integration"
+                )
         except UHomeCPApiError as err:
             _LOGGER.error("Failed to login: %s", err)
             return False
@@ -61,10 +72,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info("Saved session invalid, re-logging in")
         try:
             await client.async_login()
-        except CaptchaRequired:
-            raise ConfigEntryAuthFailed(
-                "Captcha required - please reconfigure the integration"
+        except CaptchaRequired as err:
+            auto_result = await hass.async_add_executor_job(
+                recognize_captcha, err.img_code
             )
+            if auto_result:
+                _LOGGER.info("Auto-recognized captcha during re-login: %s", auto_result)
+                try:
+                    await client.async_login_with_captcha(auto_result, err.random_token)
+                except Exception:
+                    raise ConfigEntryAuthFailed("Auto-login failed")
+            else:
+                raise ConfigEntryAuthFailed(
+                    "Captcha required - please reconfigure the integration"
+                )
         except UHomeCPApiError as err:
             _LOGGER.error("Failed to login: %s", err)
             return False
