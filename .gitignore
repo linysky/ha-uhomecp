@@ -30,3 +30,4 @@ Thumbs.db
 .secrets
 docs/RELEASE.md
 IDEA.md
+tmp/
