@@ -117,7 +117,7 @@ class UHomeCPDoorSwitch(CoordinatorEntity, SwitchEntity):
                 self.hass.async_create_task(
                     self.hass.config_entries.flow.async_init(
                         DOMAIN,
-                        context={"source": "reauth"},
+                        context={"source": "reauth", "entry_id": entry.entry_id},
                         data=entry.data,
                     )
                 )
