@@ -102,7 +102,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def _async_update_data():
         """Fetch door data from the API."""
         try:
-            return await client.async_get_doors()
+            doors = await client.async_get_doors()
+            # Persist cookies after successful fetch (covers silent re-login)
+            new_cookies = client.get_session_cookies()
+            if new_cookies and new_cookies != entry.data.get("_cookies"):
+                _LOGGER.info("Session cookies changed, persisting to config entry")
+                new_data = {**entry.data, "_cookies": new_cookies}
+                hass.config_entries.async_update_entry(entry, data=new_data)
+            return doors
         except CaptchaRequired as err:
             raise ConfigEntryAuthFailed(
                 "Session expired, re-login requires captcha"

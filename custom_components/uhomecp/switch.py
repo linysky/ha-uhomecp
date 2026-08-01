@@ -8,10 +8,11 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import UHomeCPClient
+from .api import CaptchaRequired, UHomeCPClient
 from .const import DOMAIN
 from .sensor import get_device_info
 
@@ -106,6 +107,23 @@ class UHomeCPDoorSwitch(CoordinatorEntity, SwitchEntity):
             self._is_on = False
             self.async_write_ha_state()
             _LOGGER.info("Door %s opened", self._door_name)
+        except CaptchaRequired:
+            _LOGGER.warning("Door %s requires captcha re-auth", self._door_name)
+            # Trigger reauth flow
+            entry = self.hass.config_entries.async_get_entry(
+                self.registry_entry.config_entry_id
+            )
+            if entry:
+                self.hass.async_create_task(
+                    self.hass.config_entries.flow.async_init(
+                        DOMAIN,
+                        context={"source": "reauth"},
+                        data=entry.data,
+                    )
+                )
+            raise HomeAssistantError(
+                f"开门失败：{self._door_name} 需要重新验证，请在集成配置中完成"
+            )
         except Exception as err:
             _LOGGER.error("Failed to open door %s: %s", self._door_name, err)
             raise
