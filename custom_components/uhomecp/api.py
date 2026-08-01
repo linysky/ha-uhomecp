@@ -79,7 +79,7 @@ class UHomeCPClient:
 
     def get_session_cookies(self) -> dict[str, str]:
         """Export session cookies for persistence."""
-        return dict(self.session.cookies)
+        return {c.name: c.value for c in self.session.cookies}
 
     def set_session_cookies(self, cookies: dict[str, str]) -> None:
         """Restore session cookies from saved state."""
