@@ -1,6 +1,11 @@
 # Agent internal notes
 AGENTS.md
 
+# Project docs and dev artifacts (not for GitHub)
+docs/
+IDEA.md
+tmp/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -28,6 +33,3 @@ Thumbs.db
 # HA specific
 *.log
 .secrets
-docs/RELEASE.md
-IDEA.md
-tmp/
