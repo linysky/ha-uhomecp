@@ -103,19 +103,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         """Fetch door data from the API."""
         try:
             doors = await client.async_get_doors()
-            # Persist cookies after successful fetch (covers silent re-login)
-            new_cookies = client.get_session_cookies()
-            if new_cookies and new_cookies != entry.data.get("_cookies"):
-                _LOGGER.info("Session cookies changed, persisting to config entry")
-                new_data = {**entry.data, "_cookies": new_cookies}
-                hass.config_entries.async_update_entry(entry, data=new_data)
-            return doors
         except CaptchaRequired as err:
             raise ConfigEntryAuthFailed(
                 "Session expired, re-login requires captcha"
             ) from err
         except UHomeCPApiError as err:
             raise UpdateFailed(f"Failed to fetch door data: {err}") from err
+
+        # Persist cookies after successful fetch (covers silent re-login)
+        try:
+            new_cookies = client.get_session_cookies()
+            if new_cookies and new_cookies != entry.data.get("_cookies"):
+                _LOGGER.info("Session cookies changed, persisting to config entry")
+                new_data = {**entry.data, "_cookies": new_cookies}
+                hass.config_entries.async_update_entry(entry, data=new_data)
+        except Exception as err:
+            _LOGGER.warning("Failed to persist session cookies: %s", err)
+
+        return doors
 
     coordinator = DataUpdateCoordinator(
         hass,
