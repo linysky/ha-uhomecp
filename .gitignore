@@ -30,3 +30,6 @@ Thumbs.db
 .secrets
 docs/RELEASE.md
 IDEA.md
+
+# Agent internal (framework-managed)
+.hermes/
