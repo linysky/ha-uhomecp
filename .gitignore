@@ -33,3 +33,6 @@ Thumbs.db
 # HA specific
 *.log
 .secrets
+
+# Agent internal (framework-managed)
+.hermes/
