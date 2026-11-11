@@ -21,7 +21,11 @@ Home Assistant 集成：[uhomecp.com](https://www.uhomecp.com) 社区门禁系�
 
 ### HACS（推荐）
 
-1. 在 HACS 中添加自定义仓库：`linysky/ha-uhomecp`
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=linysky&repository=ha-uhomecp&category=integration)
+
+点击徽章可一键把本仓库添加到 HA 的市场（旧版 HACS 同理）。
+
+1. 在 HACS / 市场中添加自定义仓库：`linysky/ha-uhomecp`（或点上面的徽章一键添加）
 2. 搜索 "uhomecp" 并安装
 3. 重启 Home Assistant
 
