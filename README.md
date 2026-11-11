@@ -1,7 +1,5 @@
 # ha-uhomecp
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://hacs.xyz/)
-
 Home Assistant 集成：[uhomecp.com](https://www.uhomecp.com) 社区门禁系统
 
 ## 验证状态
@@ -19,15 +17,14 @@ Home Assistant 集成：[uhomecp.com](https://www.uhomecp.com) 社区门禁系�
 
 ## 安装
 
-### HACS（推荐）
+### 市场（Marketplace，原 HACS）
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=linysky&repository=ha-uhomecp&category=integration)
 
-点击徽章可一键把本仓库添加到 HA 的市场（旧版 HACS 同理）。
+点击徽章可一键把本仓库添加到 HA 的市场（旧版 HACS 同理）；或在「设置 → 市场 → 从链接添加」粘贴 `linysky/ha-uhomecp`。
 
-1. 在 HACS / 市场中添加自定义仓库：`linysky/ha-uhomecp`（或点上面的徽章一键添加）
-2. 搜索 "uhomecp" 并安装
-3. 重启 Home Assistant
+1. 添加后搜索 "uhomecp" 并安装
+2. 按 HA 提示完成配置（首次安装带配置流程的集成无需重启；旧版 HACS 需重启一次）
 
 ### 手动安装
 
